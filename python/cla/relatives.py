@@ -9,15 +9,18 @@ class Relatives:
 	fileInput = None
 	fileOutput = None
 	cores = None
+	verbose = False
 	
-	def __init__(self, fileInput, fileOutput, cores):
+	def __init__(self, fileInput, fileOutput, cores, verbose):
 		self.fileInput = fileInput
 		self.fileOutput = fileOutput
-		cores = self.cores
+		self.cores = cores
+		self.verbose = verbose
 	
 	@staticmethod
 	def run(args):
-		r = Relatives(args.file_input, args.file_output, args.cores)
+		print(args)
+		r = Relatives(args.file_input, args.file_output, args.cores, args.verbose)
 		return r.get()
 	
 	@staticmethod
@@ -36,7 +39,6 @@ class Relatives:
 	
 	@staticmethod
 	def appendDirectDescendants(i):
-		#ma = matchedAncestors[i]
 		ma = splits[i]
 		ma.columns = ['descendant', 'ancestor', 'gsep']
 		# above code does not record direct descendants
@@ -54,23 +56,35 @@ class Relatives:
 		ma = ma[['descendant_x', 'descendant_y', 'gsep_x', 'gsep_y', 'ancestor']]
 		return ma
 	
+	def comment(self, txt):
+		if not self.verbose: return self
+		print(txt)
+		mr = tracemalloc.get_traced_memory()
+		mem = mr[1]/1024**2
+		print('Peak memory (MB): ' + str(mem))
+		return self
+	
 	def get(self):
 		tracemalloc.start()
 		cores = self.cores
 		if cores == None: cores = mp.cpu_count() - 1
+		self.comment('Reading input data from '+ self.fileInput.name)
 		merge_in = pd.read_csv(self.fileInput, sep ='\t', header=0)
-		# Split data by ancestor
 		global splits
+		# Credit: https://discuss.python.org/t/split-the-pandas-dataframe-by-a-column-value/25027/2
+		self.comment('Grouping by ancestor...')
 		splits = [x for __, x in merge_in.groupby('ancestor')]
+		self.comment('Initiating multiprocessing pool for ' + str(cores) + ' parallell processes...')
 		pool = mp.Pool(cores)
-		matchedAncestors = pool.map(Relatives.pairOnAncestry, range(len(splits)))
-		matchedAncestors = pd.concat(matchedAncestors)
+		self.comment('Matching ancestors...')
+		matched_ancestors = pool.map(Relatives.pairOnAncestry, range(len(splits)))
+		matched_ancestors = pd.concat(matched_ancestors)
+		self.comment('Appending direct descendants...')
 		dds = pool.map(Relatives.appendDirectDescendants, range(len(splits)))
 		dds = pd.concat(dds)
 		del splits
-		matched_ancestors = pd.concat([matchedAncestors, dds])
-		#matched_ancestors = pd.concat(matched_ancestors)
-		# Add direct descendats
+		matched_ancestors = pd.concat([matched_ancestors, dds])
+		self.comment('Finalizing...')
 		
 		dtypes = {
 			'descendant_x': np.int32,
@@ -126,8 +140,6 @@ class Relatives:
 		totalrel[['n_shared_anc','gsep_x', 'gsep_y']] = totalrel[['n_shared_anc','gsep_x', 'gsep_y']].astype(np.int8)
 		totalrel[['kinship_sum']] = totalrel[['kinship_sum']].astype(np.float32)
 
-		# write data frame out to compressed hdf file
+		self.comment('Writing output to '+self.fileOutput.name)
 		totalrel.to_csv(self.fileOutput, sep='\t', index=None)
-		mr = tracemalloc.get_traced_memory()
-		print(mr[1]/1024)
 		tracemalloc.stop()

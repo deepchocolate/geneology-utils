@@ -49,7 +49,8 @@ class TestTestData(unittest.TestCase):
 	def test_ancestors(self):
 		filePO = 'output/population.tsv'
 		fileRes = 'output/offspring-ancestor.tsv'
-		out = subprocess.run(['python3', '../python/pedigree-utils.py', '--file-input', filePO, '--file-output', fileRes, 'get-ancestors', '--file-intermediate', 'output/offspring-parents.p5', '--sort', 'child ancestor'])
+		out = subprocess.run(['python3', '../python/pedigree-utils.py', '--file-input', filePO, '--file-output', fileRes, 
+			'get-ancestors', '--file-intermediate', 'output/offspring-parents.p5', '--sort', 'child ancestor'])
 		self.assertEqual(0, out.returncode)
 		pop = pd.read_csv(fileRes, sep='\t')
 		self.assertEqual(18, len(pop['child']))
@@ -60,7 +61,7 @@ class TestTestData(unittest.TestCase):
 	def test_relatives(self):
 		fileOA = 'output/offspring-ancestor.tsv'
 		fileRes = 'output/relatives.tsv'
-		out = subprocess.run(['python3', '../python/pedigree-utils.py', '--file-input', fileOA, '--file-output', fileRes, 'get-relatives'])
+		out = subprocess.run(['python3', '../python/pedigree-utils.py', '--file-input', fileOA, '--file-output', fileRes, '--verbose', 'get-relatives'])
 		with open(fileRes, 'rb') as f:
 			md5 = hashlib.md5(f.read()).hexdigest()
 		self.assertEqual('81b1f82a7b4e187d1b0420187c892f3f', md5)
