@@ -22,35 +22,37 @@ class Relatives:
 	
 	@staticmethod
 	def pairOnAncestry(i):
-		splits[i].columns = ['descendant', 'ancestor', 'gsep']
-		m = pd.merge(
-			splits[i], splits[i], 
+		s = splits[i]
+		s.columns = ['descendant', 'ancestor', 'gsep']
+		s = pd.merge(
+			s, s, 
 			on = 'ancestor', 
 			how = 'inner',
 			suffixes = ['_x', '_y'],
 		)
-		#print(m)
-		m = m.query('descendant_x != descendant_y')  # get rid of descendant matches
-		m = m[['descendant_x', 'descendant_y', 'gsep_x', 'gsep_y', 'ancestor']]
-		#print(m)
+		s = s.query('descendant_x != descendant_y')  # get rid of descendant matches
+		s = s[['descendant_x', 'descendant_y', 'gsep_x', 'gsep_y', 'ancestor']]
+		return s
+	
+	@staticmethod
+	def appendDirectDescendants(i):
+		#ma = matchedAncestors[i]
+		ma = splits[i]
+		ma.columns = ['descendant', 'ancestor', 'gsep']
 		# above code does not record direct descendants
 		# record them out to 5 generations
-		#direct_ancestors = df.copy()
 		rel_of_gsep = {1:'P0', 2: '1G', 3:'2G', 4:'3G', 5:'4G'}
-		s = splits
-		splits[i]['rel'] = splits[i]['gsep'].map(rel_of_gsep)
+		ma['rel'] = ma['gsep'].map(rel_of_gsep)
 		rel_types = pd.CategoricalDtype(categories=['P0', '1G', '2G', '3G', '4G'], ordered=True)
-		splits[i]['rel'].astype(rel_types)
+		ma['rel'].astype(rel_types)
 		#direct_ancestors = s.sort_values(['descendant', 'ancestor'])
 		#s = s.sort_values(['descendant', 'ancestor'])
 
-		splits[i].columns = ['descendant_x', 'descendant_y', 'gsep_x', 'rel']
-		splits[i]['gsep_y'] = 0
-		splits[i]['ancestor'] = splits[i]['descendant_y']
-		splits[i] = splits[i][['descendant_x', 'descendant_y', 'gsep_x', 'gsep_y', 'ancestor']]
-		#print(splits[i])
-		#splits[i] = pd.concat([m, splits[i]])
-		return pd.concat([m, splits[i]])
+		ma.columns = ['descendant_x', 'descendant_y', 'gsep_x', 'rel']
+		ma['gsep_y'] = 0
+		ma['ancestor'] = ma['descendant_y']
+		ma = ma[['descendant_x', 'descendant_y', 'gsep_x', 'gsep_y', 'ancestor']]
+		return ma
 	
 	def get(self):
 		tracemalloc.start()
@@ -60,20 +62,15 @@ class Relatives:
 		# Split data by ancestor
 		global splits
 		splits = [x for __, x in merge_in.groupby('ancestor')]
-		#print(splits)
 		pool = mp.Pool(cores)
-		matched_ancestors = pool.map(Relatives.pairOnAncestry, range(len(splits)))
-		matched_ancestors = pd.concat(matched_ancestors)
-		#print(res)
-		#matched_ancestors = pd.concat(res)
-		#splits = pd.concat(splits)
-		#print(pd.concat(splits))
-		#print(splits)
-		#print(pd.concat(splits))
-		#matched_ancestors = splits
-		#print(res)
-		#print(matched_ancestors)
-		
+		matchedAncestors = pool.map(Relatives.pairOnAncestry, range(len(splits)))
+		matchedAncestors = pd.concat(matchedAncestors)
+		dds = pool.map(Relatives.appendDirectDescendants, range(len(splits)))
+		dds = pd.concat(dds)
+		del splits
+		matched_ancestors = pd.concat([matchedAncestors, dds])
+		#matched_ancestors = pd.concat(matched_ancestors)
+		# Add direct descendats
 		
 		dtypes = {
 			'descendant_x': np.int32,

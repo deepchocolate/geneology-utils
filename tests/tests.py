@@ -33,7 +33,6 @@ class TestTestData(unittest.TestCase):
 
 	def test_generatePedComponents(self):
 		fileTrios = 'input/trios.tsv'
-		#dtaTrios = pd.read_csv(fileTrios, sep='\t')
 		po = self.getParentOffspring(fileTrios)
 		ids = pd.concat([po['ID'], po['PARENT']])
 		ids = pd.unique(ids)
@@ -48,10 +47,8 @@ class TestTestData(unittest.TestCase):
 		
 
 	def test_ancestors(self):
-		#po = self.getParentOffspring('intput/trios.tsv')
 		filePO = 'output/population.tsv'
 		fileRes = 'output/offspring-ancestor.tsv'
-		#po.to_csv(filePO, sep=',', index=None, header=True)
 		out = subprocess.run(['python3', '../python/pedigree-utils.py', '--file-input', filePO, '--file-output', fileRes, 'get-ancestors', '--file-intermediate', 'output/offspring-parents.p5', '--sort', 'child ancestor'])
 		self.assertEqual(0, out.returncode)
 		pop = pd.read_csv(fileRes, sep='\t')
