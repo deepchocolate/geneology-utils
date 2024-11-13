@@ -1,0 +1,44 @@
+Bootstrap: docker
+From: ubuntu:24.04
+Stage:build
+
+%labels
+	Version 1.0.0
+	Label andreasjangmo@gmail.com
+
+%files
+ runscript.sh /bin/runscript.sh
+ ../python /pedigree-utils
+ 
+%runscript
+ exec bash /bin/runscript.sh $@
+
+%post
+	export DEBIAN_FRONTEND=noninteractive
+	chmod +x /bin/runscript.sh
+	
+	ln -s /pedigree-utils/pedigree-utils.py /usr/bin/pedigree-utils
+	
+	apt update --yes
+	apt upgrade --yes
+	
+	# install two helper packages we need
+	apt install --yes --no-install-recommends software-properties-common dirmngr apt-utils build-essential wget
+	
+	apt install --yes python3-graph-tool snakemake python3-pandas python3-networkx
+	
+	### Install anaconda
+	apt install --yes libxrandr2 libxrandr2 libxss1 libxcursor1 libxcomposite1 libxi6 libxtst6 \
+	 libgcc-11-dev gcc g++
+	
+	### Install R and packages
+	# Add the signing key
+	wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc | tee -a /etc/apt/trusted.gpg.d/cran_ubuntu_key.asc
+	# add the R 4.0 repo from CRAN -- adjust 'focal' to 'groovy' or 'bionic' as needed
+	add-apt-repository "deb https://cloud.r-project.org/bin/linux/ubuntu $(lsb_release -cs)-cran40/"
+	apt install --yes --no-install-recommends r-base r-base-dev r-cran-doparallel
+	Rscript -e "install.packages(c('argparser','DBI','RSQLite', 'pedtools', 'ribd', 'foreach', 'haven'))"
+
+%environment
+	export LC_ALL=C
+	

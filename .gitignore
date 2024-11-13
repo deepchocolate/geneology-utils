@@ -1,0 +1,17 @@
+.Rhistory
+*.Rproj*
+.Rproj.user
+geneology.geany
+container/temp
+container/*.sif
+
+# Tests folder
+tests/.snakemake/
+tests/input/*
+!tests/input/README.md
+tests/output/*
+!tests/output/README.md
+tests/__pycache__/
+
+# Python folder
+python/cla/__pycache__/
