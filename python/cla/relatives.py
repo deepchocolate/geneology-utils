@@ -78,11 +78,7 @@ class Relatives:
 		global splits
 		# Credit: https://discuss.python.org/t/split-the-pandas-dataframe-by-a-column-value/25027/2
 		self.comment('Grouping by ancestor...')
-		print(sys.getsizeof(merge_in))
 		splits = [list(x.itertuples(index=False, name=None)) for __, x in merge_in.groupby('ancestor')]
-		print(sys.getsizeof(splits))
-		print(splits[0])
-		print(splits)
 		self.comment('Initiating multiprocessing pool for ' + str(cores) + ' parallell processes...')
 		matched_ancestors = pd.DataFrame()
 		with mp.Pool(cores) as pool:
