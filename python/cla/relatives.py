@@ -29,8 +29,12 @@ class Relatives:
 	
 	@staticmethod
 	def pairOnAncestry(i):
-		s = pd.DataFrame(splits[i], columns=['descendant', 'ancestor', 'gsep'])
-		#s.columns = ['descendant', 'ancestor', 'gsep']
+		indx = splits[i]
+		s = pd.read_csv(fileName.name, sep ='\t', header=0, dtype=np.int32)
+		s = s.iloc[indx]
+		#s = splits[i]
+		#s = pd.DataFrame(splits[i], columns=['descendant', 'ancestor', 'gsep'])
+		s.columns = ['descendant', 'ancestor', 'gsep']
 		s = pd.merge(
 			s, s, 
 			on = 'ancestor', 
@@ -75,19 +79,16 @@ class Relatives:
 		if cores == None: cores = mp.cpu_count() - 1
 		self.comment('Reading input data from '+ self.fileInput.name)
 		merge_in = pd.read_csv(self.fileInput, sep ='\t', header=0, dtype=np.int32)
-		global splits
+		global splits, fileName
+		fileName = self.fileInput
 		# Credit: https://discuss.python.org/t/split-the-pandas-dataframe-by-a-column-value/25027/2
 		self.comment('Grouping by ancestor...')
-		print(sys.getsizeof(merge_in))
-		splits = [list(x.itertuples(index=False, name=None)) for __, x in merge_in.groupby('ancestor')]
-		print(sys.getsizeof(splits))
-		print(splits[0])
-		print(splits)
+		splits = [x.index.values for __, x in merge_in.groupby('ancestor')]
 		self.comment('Initiating multiprocessing pool for ' + str(cores) + ' parallell processes...')
 		matched_ancestors = pd.DataFrame()
 		with mp.Pool(cores) as pool:
 			self.comment('Matching ' + str(len(splits)) + ' ancestors...')
-			res = pool.imap_unordered(pairOnAncestry, range(len(splits)), chunksize=1000)
+			res = pool.imap_unordered(self.pairOnAncestry, range(len(splits)), chunksize=1000)
 			i = 0
 			for x in res:
 				self.comment('Collecting result ' + str(i))
