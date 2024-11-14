@@ -13,7 +13,7 @@ if __name__ == '__main__':
 	p.add_argument('--col-individual', default='ID', type=str, help='Column name of index individual')
 	p.add_argument('--col-mother', default='MOTHER', type=str, help='Column name of mother')
 	p.add_argument('--col-father', default='FATHER', type=str, help='Column name of father')
-	p.add_argument('--cores', type=int, help='Number of cores used for parallel processing when used. If omitted, N - 1 will be used')
+	p.add_argument('--cores', type=int, help='Number of cores used for parallel processing when used. If omitted, N - 1 will be used.')
 	p.add_argument('--verbose', action='store_true', help='Describe what is happening.')
 	sp = p.add_subparsers(required=True)
 	# Components
@@ -31,6 +31,7 @@ if __name__ == '__main__':
 	sp_anc.set_defaults(func=Ancestors.run)
 	# Relatives
 	sp_rel = sp.add_parser('get-relatives', help='Get relatives')
+	sp_rel.add_argument('--chunk-size', type=int, default=1000, help='Numer of ancestors to process in paralell.')
 	sp_rel.set_defaults(func=Relatives.run)
 	args = p.parse_args()
 	# Print help and exit if stdin is empty and no arguments have been passed

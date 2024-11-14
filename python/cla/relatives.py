@@ -4,6 +4,7 @@ import multiprocessing as mp
 from cla.variables import REL
 import tracemalloc
 import sys
+import time
 
 class Relatives:
 	
@@ -11,22 +12,25 @@ class Relatives:
 	fileOutput = None
 	cores = None
 	verbose = False
+	chunksize = 1000
 	
-	def __init__(self, fileInput, fileOutput, cores, verbose):
+	def __init__(self, fileInput, fileOutput, cores, chunksize, verbose):
 		self.fileInput = fileInput
 		self.fileOutput = fileOutput
 		self.cores = cores
 		self.verbose = verbose
+		self.chunksize = chunksize
+		self.time = time.time()
 	
 	@staticmethod
 	def run(args):
-		r = Relatives(args.file_input, args.file_output, args.cores, args.verbose)
+		r = Relatives(args.file_input, args.file_output, args.cores, args.chunk_size, args.verbose)
 		return r.get()
 	
 	@staticmethod
 	def pairOnAncestry(i):
-		s = splits[i]
-		s.columns = ['descendant', 'ancestor', 'gsep']
+		s = pd.DataFrame(splits[i], columns=['descendant', 'ancestor', 'gsep'])
+		#s.columns = ['descendant', 'ancestor', 'gsep']
 		s = pd.merge(
 			s, s, 
 			on = 'ancestor', 
@@ -62,6 +66,7 @@ class Relatives:
 		mr = tracemalloc.get_traced_memory()
 		mem = mr[1]/1024**2
 		print('Peak memory (MB): ' + str(mem))
+		print('Elapsed (s): ' + str(round(time.time() - self.time, 2)))
 		return self
 	
 	def get(self):
@@ -73,16 +78,19 @@ class Relatives:
 		global splits
 		# Credit: https://discuss.python.org/t/split-the-pandas-dataframe-by-a-column-value/25027/2
 		self.comment('Grouping by ancestor...')
-		splits = [x for __, x in merge_in.groupby('ancestor')]
+		print(sys.getsizeof(merge_in))
+		splits = [list(x.itertuples(index=False, name=None)) for __, x in merge_in.groupby('ancestor')]
+		print(sys.getsizeof(splits))
+		print(splits[0])
+		print(splits)
 		self.comment('Initiating multiprocessing pool for ' + str(cores) + ' parallell processes...')
 		matched_ancestors = pd.DataFrame()
 		with mp.Pool(cores) as pool:
 			self.comment('Matching ' + str(len(splits)) + ' ancestors...')
-			res = pool.imap(Relatives.pairOnAncestry, range(len(splits)), chunksize=1000)
+			res = pool.imap_unordered(pairOnAncestry, range(len(splits)), chunksize=1000)
 			i = 0
-			self.comment('Collecting results...')
 			for x in res:
-				print(i)
+				self.comment('Collecting result ' + str(i))
 				matched_ancestors = pd.concat([matched_ancestors, x])
 				i = i + 1
 				
