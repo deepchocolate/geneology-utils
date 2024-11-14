@@ -3,6 +3,7 @@ import numpy as np
 import multiprocessing as mp
 from cla.variables import REL
 import tracemalloc
+import sys
 
 class Relatives:
 	
@@ -19,7 +20,6 @@ class Relatives:
 	
 	@staticmethod
 	def run(args):
-		print(args)
 		r = Relatives(args.file_input, args.file_output, args.cores, args.verbose)
 		return r.get()
 	
@@ -69,21 +69,38 @@ class Relatives:
 		cores = self.cores
 		if cores == None: cores = mp.cpu_count() - 1
 		self.comment('Reading input data from '+ self.fileInput.name)
-		merge_in = pd.read_csv(self.fileInput, sep ='\t', header=0)
+		merge_in = pd.read_csv(self.fileInput, sep ='\t', header=0, dtype=np.int32)
 		global splits
 		# Credit: https://discuss.python.org/t/split-the-pandas-dataframe-by-a-column-value/25027/2
 		self.comment('Grouping by ancestor...')
 		splits = [x for __, x in merge_in.groupby('ancestor')]
 		self.comment('Initiating multiprocessing pool for ' + str(cores) + ' parallell processes...')
-		pool = mp.Pool(cores)
-		self.comment('Matching ancestors...')
-		matched_ancestors = pool.map(Relatives.pairOnAncestry, range(len(splits)))
-		matched_ancestors = pd.concat(matched_ancestors)
+		matched_ancestors = pd.DataFrame()
+		with mp.Pool(cores) as pool:
+			self.comment('Matching ' + str(len(splits)) + ' ancestors...')
+			res = pool.imap(Relatives.pairOnAncestry, range(len(splits)), chunksize=1000)
+			i = 0
+			self.comment('Collecting results...')
+			for x in res:
+				print(i)
+				matched_ancestors = pd.concat([matched_ancestors, x])
+				i = i + 1
+				
 		self.comment('Appending direct descendants...')
-		dds = pool.map(Relatives.appendDirectDescendants, range(len(splits)))
-		dds = pd.concat(dds)
 		del splits
-		matched_ancestors = pd.concat([matched_ancestors, dds])
+		rel_of_gsep = {1:'P0', 2: '1G', 3:'2G', 4:'3G', 5:'4G'}
+		merge_in.columns = ['descendant','ancestor', 'gsep']
+		merge_in['rel'] = merge_in['gsep'].map(rel_of_gsep)
+		rel_types = pd.CategoricalDtype(categories=['P0', '1G', '2G', '3G', '4G'], ordered=True)
+		merge_in['rel'].astype(rel_types)
+		#direct_ancestors = s.sort_values(['descendant', 'ancestor'])
+		#s = s.sort_values(['descendant', 'ancestor'])
+
+		merge_in.columns = ['descendant_x', 'descendant_y', 'gsep_x', 'rel']
+		merge_in['gsep_y'] = 0
+		merge_in['ancestor'] = merge_in['descendant_y']
+		merge_in = merge_in[['descendant_x', 'descendant_y', 'gsep_x', 'gsep_y', 'ancestor']]
+		matched_ancestors = pd.concat([matched_ancestors, merge_in])
 		self.comment('Finalizing...')
 		
 		dtypes = {
