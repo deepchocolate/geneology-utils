@@ -1,6 +1,10 @@
 import pandas as pd
 import numpy as np
 import multiprocessing as mp
+from dask.distributed import Client, LocalCluster, wait
+import dask.dataframe as dd
+import dask.config as daConfig
+from itertools import batched, chain
 from cla.variables import REL
 import tracemalloc
 import sys
@@ -28,10 +32,13 @@ class Relatives:
 		return r.get()
 	
 	@staticmethod
-	def pairOnAncestry(i):
-		s = pd.DataFrame(splits[i], columns=['descendant', 'ancestor', 'gsep'])
-		#s.columns = ['descendant', 'ancestor', 'gsep']
-		s = pd.merge(
+	def pairOnAncestry(df, i):
+		s = df.loc[i].compute()
+		#print(s)
+		#s = df[i]
+		#s = pd.DataFrame(splits[i], columns=['descendant', 'ancestor', 'gsep'])
+		s.columns = ['descendant', 'ancestor', 'gsep']
+		s = dd.merge(
 			s, s, 
 			on = 'ancestor', 
 			how = 'inner',
@@ -39,7 +46,9 @@ class Relatives:
 		)
 		s = s.query('descendant_x != descendant_y')  # get rid of descendant matches
 		s = s[['descendant_x', 'descendant_y', 'gsep_x', 'gsep_y', 'ancestor']]
-		return s
+		#print('hej')
+		#print(s)
+		return s.compute()
 	
 	@staticmethod
 	def appendDirectDescendants(i):
@@ -75,22 +84,35 @@ class Relatives:
 		if cores == None: cores = mp.cpu_count() - 1
 		self.comment('Reading input data from '+ self.fileInput.name)
 		merge_in = pd.read_csv(self.fileInput, sep ='\t', header=0, dtype=np.int32)
-		global splits
+		#global splits
+		
 		# Credit: https://discuss.python.org/t/split-the-pandas-dataframe-by-a-column-value/25027/2
 		self.comment('Grouping by ancestor...')
-		splits = [list(x.itertuples(index=False, name=None)) for __, x in merge_in.groupby('ancestor')]
+		#ddagg = dd.Aggregation(self.pairOnAncestry)
+		#rs = merge_in.groupby('ancestor').agg(ddagg)
+		#print(rs)
+		splits = [list(x.index.values) for __, x in merge_in.groupby('ancestor')]
+		splits = list(batched(splits, self.chunksize))
+		merge_in = dd.from_pandas(merge_in)
 		self.comment('Initiating multiprocessing pool for ' + str(cores) + ' parallell processes...')
-		matched_ancestors = pd.DataFrame()
-		with mp.Pool(cores) as pool:
-			self.comment('Matching ' + str(len(splits)) + ' ancestors...')
-			res = pool.imap_unordered(pairOnAncestry, range(len(splits)), chunksize=1000)
-			i = 0
-			for x in res:
-				self.comment('Collecting result ' + str(i))
-				matched_ancestors = pd.concat([matched_ancestors, x])
-				i = i + 1
-				
+		with daConfig.set({'distributed.scheduler.worker-ttl': '900s'}):
+			with LocalCluster() as cluster:
+				client = Client(cluster)
+				df_splits = client.persist(merge_in)
+				#print(df_splits)
+				futures = []
+				for i in splits:
+					indx = list(chain.from_iterable(i))
+					future = client.submit(self.pairOnAncestry, df_splits, indx)
+					futures.append(future)
+				wait(futures)
+				res = client.gather(futures)
+				#print(res)
+				matched_ancestors = dd.concat(res)
+		
 		self.comment('Appending direct descendants...')
+		#print(matched_ancestors)
+		matched_ancestors = matched_ancestors.compute()
 		del splits
 		rel_of_gsep = {1:'P0', 2: '1G', 3:'2G', 4:'3G', 5:'4G'}
 		merge_in.columns = ['descendant','ancestor', 'gsep']
@@ -104,7 +126,7 @@ class Relatives:
 		merge_in['gsep_y'] = 0
 		merge_in['ancestor'] = merge_in['descendant_y']
 		merge_in = merge_in[['descendant_x', 'descendant_y', 'gsep_x', 'gsep_y', 'ancestor']]
-		matched_ancestors = pd.concat([matched_ancestors, merge_in])
+		matched_ancestors = pd.concat([matched_ancestors, merge_in.compute()])
 		self.comment('Finalizing...')
 		
 		dtypes = {

@@ -5,7 +5,7 @@
 dirBind=$(git rev-parse --show-toplevel)
 dirTests=$dirBind/tests
 SIF=$dirBind/container/gen.sif
-singularity exec -B $dirTests $SIF python3 -m unittest --verbose tests.py
+singularity run -B $dirTests $SIF pedigree-utils python3 -m unittest --verbose tests.py
 exit
 singularity exec -B $dirTests $SIF Rscript $dirTests/create-test-data.R
 tail -n +2 input/offspring-parent.tsv > output/edge_list.txt

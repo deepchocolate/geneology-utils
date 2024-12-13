@@ -61,7 +61,7 @@ class TestTestData(unittest.TestCase):
 	def test_relatives(self):
 		fileOA = 'output/offspring-ancestor.tsv'
 		fileRes = 'output/relatives.tsv'
-		out = subprocess.run(['python3', '../python/pedigree-utils.py', '--file-input', fileOA, '--file-output', fileRes, '--verbose', 'get-relatives'])
+		out = subprocess.run(['python3', '../python/pedigree-utils.py', '--file-input', fileOA, '--file-output', fileRes, '--verbose', 'get-relatives', '--chunk-size', '2'])
 		with open(fileRes, 'rb') as f:
 			md5 = hashlib.md5(f.read()).hexdigest()
 		self.assertEqual('81b1f82a7b4e187d1b0420187c892f3f', md5)
