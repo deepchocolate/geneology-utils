@@ -93,6 +93,8 @@ class Relatives:
 		#print(rs)
 		splits = [list(x.index.values) for __, x in merge_in.groupby('ancestor')]
 		splits = list(batched(splits, self.chunksize))
+		splits = [list(chain.from_iterable(i)) for i in splits]
+		print(splits)
 		merge_in = dd.from_pandas(merge_in)
 		self.comment('Initiating multiprocessing pool for ' + str(cores) + ' parallell processes...')
 		with daConfig.set({'distributed.scheduler.worker-ttl': '900s'}):
@@ -102,8 +104,7 @@ class Relatives:
 				#print(df_splits)
 				futures = []
 				for i in splits:
-					indx = list(chain.from_iterable(i))
-					future = client.submit(self.pairOnAncestry, df_splits, indx)
+					future = client.submit(self.pairOnAncestry, df_splits, i)
 					futures.append(future)
 				wait(futures)
 				res = client.gather(futures)
