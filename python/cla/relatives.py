@@ -32,8 +32,9 @@ class Relatives:
 		return r.get()
 	
 	@staticmethod
-	def pairOnAncestry(df, i):
-		s = df.loc[i].compute()
+	def pairOnAncestry(df):
+		#s = df.loc[i].compute()
+		s = df
 		#print(s)
 		#s = df[i]
 		#s = pd.DataFrame(splits[i], columns=['descendant', 'ancestor', 'gsep'])
@@ -83,28 +84,38 @@ class Relatives:
 		cores = self.cores
 		if cores == None: cores = mp.cpu_count() - 1
 		self.comment('Reading input data from '+ self.fileInput.name)
-		merge_in = pd.read_csv(self.fileInput, sep ='\t', header=0, dtype=np.int32)
-		#global splits
+		merge_in = dd.read_csv(self.fileInput.name, sep ='\t', header=0)
+		print(merge_in)
+		#merge_in = merge_in.compute()
 		
 		# Credit: https://discuss.python.org/t/split-the-pandas-dataframe-by-a-column-value/25027/2
 		self.comment('Grouping by ancestor...')
 		#ddagg = dd.Aggregation(self.pairOnAncestry)
 		#rs = merge_in.groupby('ancestor').agg(ddagg)
 		#print(rs)
-		splits = [list(x.index.values) for __, x in merge_in.groupby('ancestor')]
+		groups = merge_in.groupby('ancestor')
+		splits = []
+		for x in merge_in['ancestor'].unique():
+			grp = groups.get_group((x,))
+			splits += [grp.index.values.compute()]
+		
+		#splits = [list(x.index.values) for __, x in merge_in.groupby('ancestor')]
 		splits = list(batched(splits, self.chunksize))
 		splits = [list(chain.from_iterable(i)) for i in splits]
 		print(splits)
-		merge_in = dd.from_pandas(merge_in)
+		print(merge_in.loc[splits[0], :])
+		#merge_in = dd.from_pandas(merge_in)
 		self.comment('Initiating multiprocessing pool for ' + str(cores) + ' parallell processes...')
 		with daConfig.set({'distributed.scheduler.worker-ttl': '900s'}):
 			with LocalCluster() as cluster:
 				client = Client(cluster)
-				df_splits = client.persist(merge_in)
-				#print(df_splits)
+				#df_splits = client.scatter(merge_in)
+				#futures = client.map(self.pairOnAncestry, splits)
 				futures = []
 				for i in splits:
-					future = client.submit(self.pairOnAncestry, df_splits, i)
+					print(i)
+					print(merge_in.iloc[:, i])
+					future = client.submit(self.pairOnAncestry, merge_in.iloc[:, i])
 					futures.append(future)
 				wait(futures)
 				res = client.gather(futures)

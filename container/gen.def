@@ -35,6 +35,7 @@ Stage:build
 	conda install conda-forge::graph-tool=2.59=py312hf63df81_1
 	conda install -c conda-forge msgpack-python==1.0.5
 	conda install dask -c conda-forge
+	conda install -c conda-forge pyarrow==14.0.1
 	conda install conda-forge::networkx
 	conda install conda-forge::pytables
 	
