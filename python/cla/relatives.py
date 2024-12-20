@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import multiprocessing as mp
 from cla.variables import REL
+from itertools import batched, chain
 import tracemalloc
 import sys
 import time
@@ -84,11 +85,14 @@ class Relatives:
 		# Credit: https://discuss.python.org/t/split-the-pandas-dataframe-by-a-column-value/25027/2
 		self.comment('Grouping by ancestor...')
 		splits = [x.index.values for __, x in merge_in.groupby('ancestor')]
+		splits = list(batched(splits, self.chunksize))
+		splits = [list(chain.from_iterable(i)) for i in splits]
+		print(splits)
 		self.comment('Initiating multiprocessing pool for ' + str(cores) + ' parallell processes...')
 		matched_ancestors = pd.DataFrame()
 		with mp.Pool(cores) as pool:
 			self.comment('Matching ' + str(len(splits)) + ' ancestors...')
-			res = pool.imap_unordered(self.pairOnAncestry, range(len(splits)), chunksize=1000)
+			res = pool.imap_unordered(self.pairOnAncestry, range(len(splits)), chunksize=self.chunksize)
 			i = 0
 			for x in res:
 				self.comment('Collecting result ' + str(i))

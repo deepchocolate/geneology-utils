@@ -31,7 +31,7 @@ if __name__ == '__main__':
 	sp_anc.set_defaults(func=Ancestors.run)
 	# Relatives
 	sp_rel = sp.add_parser('get-relatives', help='Get relatives')
-	sp_rel.add_argument('--chunk-size', type=int, default=1000, help='Numer of ancestors to process in paralell.')
+	sp_rel.add_argument('--chunk-size', type=int, default=4, help='Number of parallell processes.')
 	sp_rel.set_defaults(func=Relatives.run)
 	args = p.parse_args()
 	# Print help and exit if stdin is empty and no arguments have been passed
