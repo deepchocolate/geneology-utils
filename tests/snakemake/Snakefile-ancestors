@@ -1,0 +1,19 @@
+import pandas as pd
+from pandas import HDFStore
+DATASETS=["00", "01"]
+rule relatives:
+  input: matched_ancestors="output/matched_ancestors.tsv"
+  output: assigned_relatives="output/assigned_relatives.csv", relative_table="output/relative_table.csv"
+  script: "../scripts/assign_pedigree_relatives.py"
+
+rule matchAncestors:
+  input:
+   ancestors="output/population-ancestors.csv2",
+   splits=expand("output/population-ancestors{dataset}.csv", dataset=DATASETS)
+  output: relatives="output/matched_ancestors.tsv"
+  script: "../scripts/merge_pedigree_ancestors.py"
+
+rule splitAncestors:
+  input: "output/population-ancestors.csv2"
+  output: expand("output/population-ancestors{dataset}.csv", dataset=DATASETS)
+  shell: "split --number=l/2 --numeric-suffixes  {input} --additional-suffix=.csv output/population-ancestors"
