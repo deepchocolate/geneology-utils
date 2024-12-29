@@ -29,6 +29,7 @@ class Relatives:
 	
 	@staticmethod
 	def pairOnAncestry(i):
+		print('Processing part ' + str(i))
 		s = pd.DataFrame(splits[i], columns=['descendant', 'ancestor', 'gsep'])
 		#s.columns = ['descendant', 'ancestor', 'gsep']
 		s = pd.merge(
@@ -83,7 +84,7 @@ class Relatives:
 		matched_ancestors = pd.DataFrame()
 		with mp.Pool(cores) as pool:
 			self.comment('Matching ' + str(len(splits)) + ' ancestors...')
-			res = pool.imap_unordered(pairOnAncestry, range(len(splits)), chunksize=1000)
+			res = pool.imap_unordered(Relatives.pairOnAncestry, range(len(splits)))
 			i = 0
 			for x in res:
 				self.comment('Collecting result ' + str(i))
