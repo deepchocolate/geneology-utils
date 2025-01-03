@@ -31,7 +31,7 @@ minrels['kinship'] = np.power(0.5, minrels['gsep_t']+1)
 # sum of each shared ancestor
 totalrel = minrels.groupby(
     ['descendant_x', 'descendant_y'])[['kinship', 'gsep_x','gsep_y']].agg(
-    {'kinship': [sum, 'size'], 
+    {'kinship': ['sum', 'size'], 
      'gsep_x': lambda x: int(np.mean(x)), 
      'gsep_y': lambda x: int(np.mean(x))})
 

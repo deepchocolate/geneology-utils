@@ -44,7 +44,7 @@ rule convert:
 
 rule merge:
   input:
-    comps="output/faily-components-kombi.csv",
+    comps="output/family-components-kombi.csv",
     popn="output/population-kombi-withfounders.tsv"
   output: file="output/population-famid-kombi.tsv"
   shell:
