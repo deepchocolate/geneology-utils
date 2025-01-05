@@ -1,11 +1,11 @@
 #!/bin/bash
-#tail -n +2 input/trios.tsv | cut -f 1,2,3 > output/edge_list.txt
-#tail -n +2 input/family-membership.tsv > output/edge_list.txt
-# Remove the header
 dirBind=$(git rev-parse --show-toplevel)
 dirTests=$dirBind/tests
 SIF=$dirBind/container/gen.sif
-singularity exec -B $dirTests $SIF python3 -m unittest --verbose tests.py
+# CLI
+#apptainer exec -B $dirTests $SIF python3 -m unittest --verbose tests.py
+# Snakemake
+apptainer exec -B $dirTests $SIF snakemake --cores 2 -s snakemake/Snakefile.py
 exit
 singularity exec -B $dirTests $SIF Rscript $dirTests/create-test-data.R
 tail -n +2 input/offspring-parent.tsv > output/edge_list.txt

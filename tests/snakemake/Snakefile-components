@@ -1,0 +1,7 @@
+
+rule components:
+ input: trios="output/edge_list.txt"
+ output: geneologies="output/components.csv"
+ params:
+  sep="\t"
+ script: "../scripts/components.py"

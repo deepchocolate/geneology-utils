@@ -10,6 +10,7 @@ tests/.snakemake/
 tests/input/*
 !tests/input/README.md
 tests/output/*
+tests/snakemake/output
 !tests/output/README.md
 tests/__pycache__/
 
